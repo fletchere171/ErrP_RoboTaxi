@@ -132,7 +132,7 @@ class PyGameGUI:
         pygame.K_RIGHT
     ]
 
-    def __init__(self, save_frames=False, field_size=8, test=False, random_seeds=None, calibration=False, BCI=False):
+    def __init__(self, save_frames=False, field_size=8, test=False, random_seeds=None, calibration=False, BCI=False, threshold = 0.5):
         self.random_seeds = random_seeds or []
         pygame.init()
 
@@ -225,6 +225,7 @@ class PyGameGUI:
         self.tid_queue = queue.Queue()
         self.tid_thread = None
         self.latest_prob = None
+        self.threshold = threshold
         if self.isLoop and self.bci is not None:
             self.tid_thread = TiDReceiver(self.bci, self.tid_queue)
             self.tid_thread.start()
@@ -897,7 +898,11 @@ class PyGameGUI:
             if collect_feedback and self.isLoop:
                 for (prob, tstamp) in self.drain_tid_events():
                     # pass error probabilitity to tamer
-                    self.latest_prob = prob  
+                    self.latest_prob = prob
+                    if(self.latest_prob >= self.threshold):
+                        self.pulse_button('minus')
+                        feedback_log.append({"time": tstamp, "reward": -1})
+                        self.parallel.signal(104)
                     pass
                    
             if self.frame_num == 0 and PLAY_SOUND:
@@ -1075,6 +1080,10 @@ class PyGameGUI:
                                 for (prob, tstamp) in self.drain_tid_events():
                                     # feed error probability to TAMER
                                     self.latest_prob = prob
+                                    if(self.latest_prob >= self.threshold):
+                                        self.pulse_button('minus')
+                                        feedback_log.append({"time": tstamp, "reward": -1})
+                                        self.parallel.signal(104)
                                     pass 
                                     
                             if flag_reward_minus:
